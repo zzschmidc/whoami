@@ -1,0 +1,47 @@
+name: "Build and Package"
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+jobs:
+  build_package:
+    name: Go v${{ matrix.go }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ["1.19"]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Build/Package - Linux AMD64
+        run: |
+          GOOS=linux GOARCH=amd64 go build -tags="lambda.norpc" -ldflags="-w -s" -o bootstrap
+          zip -9 whoami-linux-amd64-${{ matrix.go }}.zip bootstrap
+      - name: Build/Package - Linux ARM64
+        run: |
+          GOOS=linux GOARCH=arm64 go build -tags="lambda.norpc" -ldflags="-w -s" -o bootstrap
+          zip -9 whoami-linux-arm64-${{ matrix.go }}.zip bootstrap
+      # - name: Upload Linux AMD64
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: whoami-linux-amd64-${{ matrix.go }}-${{ github.ref_name }}
+      #     path: whoami-linux-amd64-${{ matrix.go }}.zip
+      # - name: Upload Linux ARM64
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: whoami-linux-arm64-${{ matrix.go }}-${{ github.ref_name }}
+      #     path: whoami-linux-arm64-${{ matrix.go }}.zip
+      - name: Release
+        uses: ncipollo/release-action@v1
+        with:
+          name: whoami-${{ matrix.go }}-${{ github.ref_name }}
+          artifacts: "whoami-*.zip"
+          makeLatest: true
